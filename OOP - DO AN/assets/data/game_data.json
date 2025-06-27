@@ -1,0 +1,16 @@
+{
+  "best_score": 28,
+  "total_points": 116,
+  "purchased_items": [
+    "bo_0",
+    "background_1",
+    "background_2"
+  ],
+  "equipped_skin": "bo_0",
+  "equipped_background": "background_2",
+  "settings": {
+    "sound_enabled": true,
+    "volume": 0.8
+  },
+  "equipped_effect": null
+}
