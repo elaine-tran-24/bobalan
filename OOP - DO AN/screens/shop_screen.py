@@ -1,149 +1,233 @@
 from kivy.uix.screenmanager import Screen
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.scrollview import ScrollView
-from kivy.uix.button import Button
+from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.label import Label
+from kivy.uix.image import Image
 from kivy.uix.popup import Popup
-from kivy.metrics import dp
 from kivy.app import App
-from kivy.logger import Logger
+from kivy.core.window import Window
+from kivy.uix.behaviors import ButtonBehavior
+from screens.background import ParallaxWidget
+from screens.hover_button import HoverImageButton
+from kivy.uix.relativelayout import RelativeLayout
+from kivy.uix.boxlayout import BoxLayout
+
+# Button hình ảnh
+class ImageButton(ButtonBehavior, Image):
+    pass
 
 class ShopScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.current_tab = 'skin'  # Default tab
+
+        # Nền parallax
+        self.bg_parallax = ParallaxWidget()
+        self.add_widget(self.bg_parallax)
+
+        self.current_index = 0
+        self.skin_items = []
+
         self.build_ui()
+        Window.bind(size=self.update_bg)
+
+    def update_bg(self, *args):
+        if hasattr(self, 'bg_parallax'):
+            self.bg_parallax.on_resize()
 
     def build_ui(self):
-        self.main_layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
-
-        # Title
-        title = Label(text='[b][size=32]🛒 Shop[/size][/b]', markup=True, size_hint=(1, 0.1))
-        self.main_layout.add_widget(title)
-
-        # Points display
-        self.points_label = Label(text='', size_hint=(1, 0.05), halign='center')
-        self.points_label.markup = True
-        self.main_layout.add_widget(self.points_label)
-
-        # Tab buttons
-        tab_layout = BoxLayout(size_hint=(1, 0.1), spacing=10)
-        skin_btn = Button(text='Skins', on_press=lambda x: self.switch_tab('skin'))
-        background_btn = Button(text='Backgrounds', on_press=lambda x: self.switch_tab('background'))
-        tab_layout.add_widget(skin_btn)
-        tab_layout.add_widget(background_btn)
-        self.main_layout.add_widget(tab_layout)
-
-        # Scrollable item list
-        scroll = ScrollView(size_hint=(1, 0.65))
-        self.item_container = BoxLayout(orientation='vertical', spacing=10, size_hint_y=None)
-        self.item_container.bind(minimum_height=self.item_container.setter('height'))
-        scroll.add_widget(self.item_container)
-        self.main_layout.add_widget(scroll)
-
-        # Back button
-        back_btn = Button(text='← Back', size_hint=(1, 0.1))
-        back_btn.bind(on_press=lambda x: setattr(self.manager, 'current', 'main_menu'))
-        self.main_layout.add_widget(back_btn)
-
+        self.main_layout = FloatLayout()
         self.add_widget(self.main_layout)
 
-    def switch_tab(self, tab_type):
-        self.current_tab = tab_type
-        self.refresh_shop()
+       # Layout chứa icon và điểm
+        points_container = BoxLayout(
+            orientation='horizontal',
+            size_hint=(None, None),
+            size=(200, 50),
+            pos_hint={'center_y': 0.87, 'center_x': 0.5},
+            spacing=10
+        )
+
+        # Icon tiền
+        coin_icon = Image(
+            source="assets/images/buttons/total_score.png",  
+            pos_hint={'center_y': 0.89, 'center_x': 0.5},
+            size_hint=(None, None),
+            size=(80, 80)
+        )
+        points_container.add_widget(coin_icon)
+
+        # Nhãn số điểm
+        self.points_label = Label(
+            text='',
+            markup=True,
+            font_name="assets/fonts/HeeHawRegular.ttf",
+            font_size=55,
+            pos_hint={'center_y': 0.89, 'center_x': 0.5},
+            halign='left',
+            valign='middle'
+        )
+        self.points_label.bind(size=self.points_label.setter('text_size'))
+
+        self.points_label.bind(size=self.points_label.setter('text_size'))
+
+        points_container.add_widget(self.points_label)
+        self.main_layout.add_widget(points_container)
+
+        # Frame nền của shop
+        self.shop_frame = Image(
+            source="assets/images/backgrounds/shop.png",
+            allow_stretch=True,
+            keep_ratio=True,
+            size_hint=(0.7, 0.7),
+            size=(1000, 700),
+            pos_hint={"center_x": 0.5, "center_y": 0.5}
+        )
+        self.main_layout.add_widget(self.shop_frame)
+
+        # Ảnh nhân vật (skin)
+        self.skin_image = Image(
+            allow_stretch=True,
+            size_hint=(None, None),
+            size=(300, 300),
+            pos_hint={"center_x": 0.5, "center_y": 0.50}
+        )
+        self.main_layout.add_widget(self.skin_image)
+
+        # Nút trái
+        self.left_btn = HoverImageButton(
+            source="assets/images/buttons/left_button.png",
+            size_hint=(None, None),
+            size=(120, 120),
+            pos_hint={"center_x": 0.29, "center_y": 0.42}
+        )
+        self.left_btn.bind(on_press=self.prev_skin)
+        self.main_layout.add_widget(self.left_btn)
+
+        # Nút phải
+        self.right_btn = HoverImageButton(
+            source="assets/images/buttons/right_button.png",
+            size_hint=(None, None),
+            size=(120, 120),
+            pos_hint={"center_x": 0.70, "center_y": 0.42}
+        )
+        self.right_btn.bind(on_press=self.next_skin)
+        self.main_layout.add_widget(self.right_btn)
+
+        # Giá skin
+        # Layout chứa hình và nhãn chồng lên nhau
+        price_container = RelativeLayout(
+            size_hint=(None, None),
+            size=(160, 80),
+            pos_hint={"center_x": 0.5, "center_y": 0.35}
+        )
+
+        # Hình nền phía sau
+        price_bg = Image(
+            source="assets/images/buttons/price.png", 
+            allow_stretch=True,
+            keep_ratio=False,
+            size_hint=(None, None),
+            size=(160, 80),
+            pos_hint={"center_x": 0.5, "center_y": 0.35}
+        )
+        price_container.add_widget(price_bg)
+
+        # Nhãn giá
+        self.price_label = Label(
+            text='',
+            markup=True,
+            font_name="assets/fonts/HeeHawRegular.ttf",
+            halign='center',
+            valign='middle',
+            size_hint=(None, None),
+            font_size=40,
+            size=(160, 80),
+            pos_hint={"center_x": 0.5, "center_y": 0.35}
+        )
+        self.price_label.bind(size=self.price_label.setter('text_size'))
+
+        price_container.add_widget(self.price_label)
+
+        # Thêm container vào layout chính
+        self.main_layout.add_widget(price_container)
+
+        # Nút hành động (Buy/Use/Using)
+        self.action_btn = HoverImageButton(
+            size_hint=(None, None),
+            size=(260, 100),
+            pos_hint={"center_x": 0.5, "center_y": 0.26},
+            allow_stretch=True
+        )
+        self.action_btn.bind(on_press=self.on_action_pressed)
+        self.main_layout.add_widget(self.action_btn)
+
+        # Nút quay lại
+        self.back_btn = HoverImageButton(
+            source="assets/images/buttons/home.png",
+            size_hint=(None, None),
+            size=(120, 120),
+            pos_hint={"right": 0.98, "y": 0.02}
+        )
+        self.back_btn.bind(on_press=lambda x: setattr(self.manager, 'current', 'main_menu'))
+        self.main_layout.add_widget(self.back_btn)
 
     def on_enter(self):
-        self.refresh_shop()
-
-    def refresh_shop(self):
-        self.item_container.clear_widgets()
         app = App.get_running_app()
-        dm = app.data_manager
+        self.dm = app.data_manager
+        self.skin_items = [item for item in self.dm.get_shop_items() if item['type'] == 'skin']
+        self.current_index = 0
+        self.refresh_skin_display()
 
-        points = dm.get_total_points()
-        purchased = dm.get_purchased_items()
-        items = [item for item in dm.get_shop_items() if item['type'] == self.current_tab]
+    def prev_skin(self, *args):
+        self.current_index = (self.current_index - 1) % len(self.skin_items)
+        self.refresh_skin_display()
 
-        # Chọn đúng loại đã trang bị
-        equipped = dm.get_equipped_skin() if self.current_tab == 'skin' else dm.get_equipped_background()
+    def next_skin(self, *args):
+        self.current_index = (self.current_index + 1) % len(self.skin_items)
+        self.refresh_skin_display()
 
-        self.points_label.text = f'[b]Points: {points}[/b]'
+    def refresh_skin_display(self):
+        item = self.skin_items[self.current_index]
+        app = App.get_running_app()
+        points = self.dm.get_total_points()
+        purchased = self.dm.get_purchased_items()
+        equipped = self.dm.get_equipped_skin()
 
-        for item in items:
-            item_id = item['id']
-            name = item['name']
-            cost = item['cost']
+        self.points_label.text = f'[color=583101][b]${points}[/b][/color]'
 
-            box = BoxLayout(size_hint_y=None, height=dp(60), padding=5, spacing=10)
+        # Cập nhật ảnh nhân vật
+        skin_path = f"assets/images/characters/{item['id']}.gif"
+        self.skin_image.source = skin_path
 
-            label = Label(
-                text=f'{name} [color=ffffaa]{cost} pts[/color]',
-                markup=True,
-                halign='left',
-                valign='middle',
-                size_hint=(0.6, 1)
-            )
-            label.bind(size=label.setter('text_size'))
+        # Nhãn giá
+        self.price_label.text = f"[color=583101][b]${item['cost']}[/b][/color]"
 
-            btn = Button(size_hint=(0.4, 1))
+        # Cập nhật nút hành động
+        if item['id'] not in purchased:
+            self.action_btn.source = "assets/images/buttons/buy_button.png"
+        elif item['id'] == equipped:
+            self.action_btn.source = "assets/images/buttons/using_button.png"
+        else:
+            self.action_btn.source = "assets/images/buttons/use_button.png"
 
-            if item_id in purchased:
-                if item_id == equipped:
-                    btn.text = 'Using'
-                    btn.disabled = True
-                else:
-                    btn.text = 'Use'
-                    btn.bind(on_press=lambda b, i=item_id: self.use_item(i))
+    def on_action_pressed(self, *args):
+        item = self.skin_items[self.current_index]
+        item_id = item['id']
+        purchased = self.dm.get_purchased_items()
+        equipped = self.dm.get_equipped_skin()
+        app = App.get_running_app()
+
+        if item_id not in purchased:
+            if self.dm.purchase_item(item_id):
+                app.sound_manager.play_sound('coin')
+                self.dm.set_equipped_skin(item_id)
             else:
-                btn.text = f'Buy ({cost})'
-                if cost <= points:
-                    btn.bind(on_press=lambda b, i=item_id: self.buy_item(i))
-                else:
-                    btn.bind(on_press=lambda b: self.show_popup("Not enough points!"))
+                self.show_popup("Not enough points!")
+                return
+        elif item_id != equipped:
+            self.dm.set_equipped_skin(item_id)
+            app.sound_manager.play_sound('equip')
 
-            box.add_widget(label)
-            box.add_widget(btn)
-            self.item_container.add_widget(box)
-
-    def buy_item(self, item_id):
-        app = App.get_running_app()
-        dm = app.data_manager
-        if dm.purchase_item(item_id):
-            app.sound_manager.play_sound('coin')
-            self.show_popup("Purchase successful!")
-            self.use_item(item_id)  # Tự động trang bị luôn sau khi mua
-        else:
-            app.sound_manager.play_sound('error')
-            self.show_popup("Not enough points or already owned!")
-        self.refresh_shop()
-
-    def use_item(self, item_id):
-        app = App.get_running_app()
-        dm = app.data_manager
-        item = dm.get_item_by_id(item_id)
-        if not item:
-            self.show_popup("Invalid item.")
-            return
-
-        if item['type'] == 'skin':
-            dm.set_equipped_skin(item_id)
-        elif item['type'] == 'background':
-            dm.set_equipped_background(item_id)
-
-        app.sound_manager.play_sound('equip')
-        self.preview_item(item_id)
-        self.refresh_shop()
-
-    def preview_item(self, item_id):
-        app = App.get_running_app()
-        if item_id.startswith("bo_"):
-            path = f"assets/images/characters/{item_id}.png"
-        elif item_id.startswith("background_"):
-            path = f"assets/images/backgrounds/{item_id}.png"
-        else:
-            return
-        Logger.info(f"Previewing: {path}")
-        # Hiển thị ở một nơi nào đó (nếu bạn muốn)
+        self.refresh_skin_display()
 
     def show_popup(self, message):
         popup = Popup(title='Shop',

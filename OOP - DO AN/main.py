@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 When Cows Fly - A Kivy-based endless runner game
@@ -21,11 +22,14 @@ from screens.shop_screen import ShopScreen
 from screens.game_over_screen import GameOverScreen
 from screens.tutorial_screen import TutorialScreen
 from screens.settings_screen import SettingsScreen
-from screens.parallax import ParallaxApp
+from screens.game_settings_screen import GameSettingsScreen
+from screens.background import ParallaxApp
 
 # Import utilities
 from utils.data_manager import DataManager
 from utils.sound_manager import SoundManager
+Window.size = (800,600)  # Landscape
+
 
 class WhenCowsFlyApp(App):
     """Main application class for When Cows Fly game"""
@@ -54,7 +58,8 @@ class WhenCowsFlyApp(App):
         self.screen_manager.add_widget(GameOverScreen(name='game_over'))
         self.screen_manager.add_widget(TutorialScreen(name='tutorial'))
         self.screen_manager.add_widget(SettingsScreen(name='settings'))
-        
+        self.screen_manager.add_widget(GameSettingsScreen(name='game_settings'))
+         
         # Set initial screen
         self.screen_manager.current = 'main_menu'
         
@@ -119,8 +124,10 @@ class WhenCowsFlyApp(App):
         return True
     
     def on_resume(self):
-        """Called when app is resumed (Android)"""
-        pass
+        if self.screen_manager.current == 'game':
+            game_screen = self.screen_manager.get_screen('game')
+            if hasattr(game_screen, 'resume_game'):
+                game_screen.resume_game()
 
 if __name__ == '__main__':
     WhenCowsFlyApp().run()

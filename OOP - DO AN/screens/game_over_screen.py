@@ -11,6 +11,8 @@ from kivy.app import App
 from kivy.graphics import Color, Rectangle
 from kivy.core.window import Window
 from kivy.animation import Animation
+from screens.background import ParallaxWidget
+from kivy.uix.floatlayout import FloatLayout
 
 class GameOverScreen(Screen):
     """Game over screen with score display and navigation buttons"""
@@ -23,17 +25,17 @@ class GameOverScreen(Screen):
     
     def build_ui(self):
         """Build the game over UI"""
-        # Main layout
-        main_layout = BoxLayout(orientation='vertical', padding=20, spacing=20)
+        # Background setup
+        self.bg_parallax = ParallaxWidget()
+        self.add_widget(self.bg_parallax)
+
+        with self.canvas:
+            self.overlay_color = Color(0, 0, 0, 0.2)  # black, opacity 0.2 (20%)
+            self.overlay_rect = Rectangle(pos=self.pos, size=self.size)
+        self.bind(pos=self.update_overlay, size=self.update_overlay)
         
-        # Add background
-        with self.canvas.before:
-            Color(0.2, 0.2, 0.3, 1)  # Dark background
-            self.bg_rect = Rectangle(size=Window.size, pos=(0, 0))
-        
-        # Bind to update background on window resize
-        self.bind(size=self.update_bg)
-        Window.bind(size=self.update_bg)
+        main_layout = FloatLayout()
+        self.add_widget(main_layout)
         
         # Game Over title
         game_over_label = Label(
@@ -93,9 +95,11 @@ class GameOverScreen(Screen):
         
         # Spacer
         main_layout.add_widget(Widget(size_hint=(1, 0.05)))
-        
-        self.add_widget(main_layout)
-    
+
+    def update_overlay(self, *args):
+        self.overlay_rect.pos = self.pos
+        self.overlay_rect.size = self.size
+
     def update_bg(self, *args):
         """Update background size"""
         self.bg_rect.size = Window.size

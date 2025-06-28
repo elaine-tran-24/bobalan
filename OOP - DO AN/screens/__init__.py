@@ -1,0 +1,1 @@
+#File __init__.py biến screens/ thành một Python package để có thể import như from screens.parallax import ParallaxWidget.

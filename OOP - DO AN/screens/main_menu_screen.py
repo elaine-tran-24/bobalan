@@ -10,8 +10,9 @@ from kivy.uix.widget import Widget
 from kivy.app import App
 from kivy.core.window import Window
 from kivy.uix.image import Image
-from screens.hover_button import HoverButton  # Đảm bảo có file hover_button.py
+from screens.hover_button import HoverImageButton 
 from kivy.uix.behaviors import ButtonBehavior
+from screens.background import ParallaxWidget  
 
 class ImageButton(ButtonBehavior, Image):
     pass
@@ -27,17 +28,8 @@ class MainMenuScreen(Screen):
 
 
     def build_ui(self):
-         # 1. Background
-        self.bg_image = Image(
-            source='assets/images/backgrounds/background_1.png',
-            allow_stretch=True,
-            keep_ratio=False,
-            size_hint=(None, None),
-            size=Window.size,
-            pos=(0, 0)
-        )
-        self.add_widget(self.bg_image)
-
+        self.bg_parallax = ParallaxWidget()
+        self.add_widget(self.bg_parallax)
         # 2. Layout gốc
         main_layout = FloatLayout()
         self.add_widget(main_layout)
@@ -51,19 +43,11 @@ class MainMenuScreen(Screen):
         )
 
         # 4. Cow Preview
-        self.cow_preview = Image(size_hint=(None, None), size=(300, 200), allow_stretch=True, keep_ratio=True)
-        self.preview_layout = BoxLayout(orientation='horizontal', size_hint=(1, 0.4), spacing=10, padding=[0, 20])
+        self.cow_preview = Image(source="assets/images/characters/logo.png",size_hint=(None, None), size=(500, 400), allow_stretch=True, keep_ratio=True)
+        self.preview_layout = BoxLayout(orientation='horizontal', size_hint=(1, 0.4), spacing=20, padding=[0, 20])
         self.preview_layout.add_widget(Widget(size_hint=(0.5, 1)))  # spacer trái
         self.preview_layout.add_widget(self.cow_preview)
         self.preview_layout.add_widget(Widget(size_hint=(0.5, 1)))  # spacer phải
-
-        # 5. Title
-        title_label = Label(
-            text='[size=48][color=ffffff]When Cows Fly[/color][/size]',
-            markup=True,
-            size_hint=(1, 0.15),
-            halign='center'
-        )
 
         # 6. Score
         self.score_label = Label(
@@ -74,15 +58,13 @@ class MainMenuScreen(Screen):
         )
 
         # 7. Buttons
-        button_layout = BoxLayout(orientation='vertical', spacing=15, size_hint=(1, 0.45))
+        button_layout = BoxLayout(orientation='vertical', spacing=5, size_hint=(1, 0.45))
 
-        play_btn = HoverButton(text='PLAY', font_size='24sp')
-        shop_btn = HoverButton(text='SHOP', font_size='20sp')
-        tutorial_btn = HoverButton(text='TUTORIAL', font_size='20sp')
+        play_btn = ImageButton(source='assets/images/buttons/play_button.png', size_hint=(None, None), size=(200, 100), allow_stretch=True)
+        shop_btn = ImageButton(source='assets/images/buttons/shop_button.png', size_hint=(None, None), size=(200, 100), allow_stretch=True)
+        tutorial_btn = ImageButton(source='assets/images/buttons/tutorial_button.png', size_hint=(None, None), size=(200, 100), allow_stretch=True)
 
         for btn in [play_btn, shop_btn, tutorial_btn]:
-            btn.size_hint = (None, None)
-            btn.size = (200, 60)
             btn.pos_hint = {'center_x': 0.5}
 
         play_btn.bind(on_press=self.start_game)
@@ -95,7 +77,6 @@ class MainMenuScreen(Screen):
 
         # 8. Add các thành phần vào vertical_layout
         vertical_layout.add_widget(self.preview_layout)
-        vertical_layout.add_widget(title_label)
         vertical_layout.add_widget(self.score_label)
         vertical_layout.add_widget(button_layout)
 
@@ -104,7 +85,7 @@ class MainMenuScreen(Screen):
 
         # 10. Settings icon
         settings_btn = ImageButton(
-            source='assets/images/icons/settings_icon.png',
+            source='assets/images/buttons/setting.png',
             size_hint=(None, None),
             size=(80, 80),
             pos_hint={'right': 0.98, 'y': 0.02}
@@ -242,9 +223,10 @@ class MainMenuScreen(Screen):
         if app and hasattr(app, 'data_manager'):
             best = app.data_manager.get_best_score()
             pts = app.data_manager.get_total_points()
+            self.score_label.font_name = "assets/fonts/HeehawRegular.ttf"
             self.score_label.text = (
-                f'[size=18][color=ffffff]Best Score: {best}[/color][/size]\n'
-                f'[size=16][color=ffffaa]Total Points: {pts}[/color][/size]'
+                f'[size=40][color=ffffff]Best Score: {best}[/color][/size]\n'
+                f'[size=30][color=ffffaa]Total Points: {pts}[/color][/size]'
             )
 
     def update_preview(self):
@@ -253,23 +235,10 @@ class MainMenuScreen(Screen):
         dm = app.data_manager
 
         skin_id = dm.get_equipped_skin()
-        bg_id = dm.get_equipped_background()
-        
+                
         # Load cow skin image preview
-        skin_path = f"assets/images/characters/{skin_id}.png" if skin_id else "assets/images/characters/bo_0.png"
-        bg_path = f"assets/images/backgrounds/{bg_id}.png" if bg_id else "assets/images/backgrounds/background_1.png"
-
-        if os.path.exists(skin_path):
-            self.cow_preview.source = skin_path
-        else:
-            self.cow_preview.source = "assets/images/characters/bo_0.png"
-          
-        if os.path.exists(bg_path):
-            self.bg_image.source = bg_path
-        else:
-            self.bg_image.source = "assets/images/backgrounds/background_1.png"
-
-    
+        skin_path = f"assets/images/characters/{skin_id}.png" if skin_id else "assets/images/characters/bo.gif"
+        
     # def on_pre_enter(self):
     #     """Update preview before entering"""
     #     app = App.get_running_app()
@@ -279,14 +248,14 @@ class MainMenuScreen(Screen):
     #     bg_id = dm.get_equipped_background()
 
     #     # Set default values if not chosen
-    #     skin_path = f"assets/images/characters/{skin_id}.png" if skin_id else "assets/images/characters/bo_0.png"
+    #     skin_path = f"assets/images/characters/{skin_id}.png" if skin_id else "assets/images/characters/bo.png"
     #     bg_path = f"assets/images/backgrounds/{bg_id}.png" if bg_id else "assets/images/backgrounds/background_1.png"
 
     #     # Preview character and background
     #     if os.path.exists(skin_path):
     #         self.cow_preview.source = skin_path
     #     else:
-    #         self.cow_preview.source = "assets/images/characters/bo_0.png"
+    #         self.cow_preview.source = "assets/images/characters/bo.png"
         
     #     if os.path.exists(bg_path):
     #         self.bg_image.source = bg_path
@@ -319,5 +288,5 @@ class MainMenuScreen(Screen):
         self.manager.current = 'settings'
 
     def update_bg_image(self, *args):
-        self.bg_image.size = Window.size
-        self.bg_image.pos = (0, 0)
+        if hasattr(self, 'bg_parallax'):
+            self.bg_parallax.on_resize()  # hoặc update_size(Window.size) nếu bạn có hàm đó

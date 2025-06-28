@@ -4,7 +4,6 @@ Settings Screen for When Cows Fly
 
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.slider import Slider
 from kivy.uix.switch import Switch
@@ -13,8 +12,24 @@ from kivy.app import App
 from kivy.graphics import Color, Rectangle
 from kivy.core.window import Window
 from kivy.uix.togglebutton import ToggleButton
+from kivy.uix.behaviors import ToggleButtonBehavior
 from kivy.metrics import dp
+from screens.background import ParallaxWidget
+from screens.hover_button import HoverImageButton
+from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.image import Image
 
+class ImageSwitch(ToggleButtonBehavior, Image):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.update_source()
+        self.bind(state=self.on_state_change)
+
+    def on_state_change(self, *args):
+        self.update_source()
+
+    def update_source(self):
+        self.source = 'assets/images/buttons/on_sound_effect.png' if self.state == 'down' else 'assets/images/buttons/off_sound_effect.png'
 
 class SettingsScreen(Screen):
     """Settings screen for game configuration"""
@@ -25,137 +40,153 @@ class SettingsScreen(Screen):
     
     def build_ui(self):
         """Build the settings UI"""
-        # Main layout
-        main_layout = BoxLayout(orientation='vertical', padding=20, spacing=20)
+
+        # Background setup
+        self.bg_parallax = ParallaxWidget()
+        self.add_widget(self.bg_parallax)
+
+        with self.canvas:
+            self.overlay_color = Color(0, 0, 0, 0.2)  # black, opacity 0.2 (20%)
+            self.overlay_rect = Rectangle(pos=self.pos, size=self.size)
+        self.bind(pos=self.update_overlay, size=self.update_overlay)
         
-        # Add background
-        with self.canvas.before:
-            Color(0.2, 0.3, 0.5, 1)  # Blue-gray background
-            self.bg_rect = Rectangle(size=Window.size, pos=(0, 0))
-        
-        # Bind to update background on window resize
-        self.bind(size=self.update_bg)
-        Window.bind(size=self.update_bg)
+        main_layout = FloatLayout()
+        self.add_widget(main_layout)
+
+        vertical_layout = BoxLayout(
+            orientation='vertical',
+            padding=20,
+            spacing=20,
+            size_hint=(1, 1)
+        )
         
         # Title
         title_label = Label(
-            text='[size=36][color=ffffff]Settings[/color][/size]',
+            text='[size=100][color=ffffff]Settings[/color][/size]',
+            font_name="assets/fonts/HeehawRegular.ttf",
             markup=True,
-            size_hint=(1, 0.15),
-            halign='center'
-        )
+            size_hint=(1, None),              
+            height=dp(60),                    
+            halign='center',
+            valign='middle',
+            pos_hint={'top': 0.9, 'center_x': 0.5}  
+)
         main_layout.add_widget(title_label)
         
         # Settings content
         settings_layout = BoxLayout(orientation='vertical', spacing=30, size_hint=(1, 0.6))
         
         # Sound Enable/Disable
-        sound_layout = BoxLayout(orientation='horizontal', size_hint=(1, 0.3))
-        
+        sound_layout = BoxLayout(orientation='horizontal', size_hint=(1, None), height=dp(100), padding=(dp(40), 0, 0, 0))
+
         sound_label = Label(
-            text='[size=20][color=ffffff]Sound Effects:[/color][/size]',
+            text='[size=30][color=ffffff]Sound Effects:[/color][/size]',
+            font_name="assets/fonts/HeeHawRegular.ttf",
             markup=True,
             size_hint=(0.7, 1),
-            halign='left'
+            halign='left',
+            valign='middle'
         )
         sound_label.bind(size=sound_label.setter('text_size'))
         sound_layout.add_widget(sound_label)
-        
-        self.sound_switch = Switch(
-            size_hint=(0.3, 1),
-            active=True
-        )
-        self.sound_switch.bind(active=self.on_sound_toggle)
+
+        # Sound switch
+        self.sound_switch = ImageSwitch(
+            size_hint=(0.3, 1)
+            )
+        self.sound_switch.bind(on_press=self.on_sound_toggle)
         sound_layout.add_widget(self.sound_switch)
         
         settings_layout.add_widget(sound_layout)
         
         # Volume Slider
-        volume_layout = BoxLayout(orientation='vertical', size_hint=(1, 0.4))
+        volume_layout = BoxLayout(orientation='vertical', size_hint=(1, 0.4), padding=(dp(40), 0, 0, 0))
+        
+        volume_row = BoxLayout(
+            orientation='horizontal',
+            size_hint=(1, None),
+            height=dp(60),  # Đảm bảo đủ cao cho slider
+            spacing=20
+        )
         
         volume_label = Label(
-            text='[size=20][color=ffffff]Volume:[/color][/size]',
+            text='[size=30][color=ffffff]Volume:[/color][/size]',
+            font_name="assets/fonts/HeeHawRegular.ttf",
             markup=True,
-            size_hint=(1, 0.3),
-            halign='left'
+            size_hint=(0.25, 1),
+            halign='left',
+            valign='middle'
         )
         volume_label.bind(size=volume_label.setter('text_size'))
-        volume_layout.add_widget(volume_label)
         
         # Volume slider with value display
-        slider_layout = BoxLayout(orientation='horizontal', size_hint=(1, 0.7))
         
         self.volume_slider = Slider(
             min=0.0,
             max=1.0,
             value=0.8,
             step=0.1,
-            size_hint=(0.8, 1)
+            size_hint=(0.6, 1),
+            height=68,
+            background_horizontal="assets/images/buttons/volume_1.png",  
+            cursor_image="assets/images/buttons/volume_2.png"  
         )
         self.volume_slider.bind(value=self.on_volume_change)
-        slider_layout.add_widget(self.volume_slider)
         
+        # Volume value label
         self.volume_value_label = Label(
             text='80%',
-            size_hint=(0.2, 1),
-            halign='center'
+            font_size='20sp',
+            size_hint=(0.15, 1),
+            halign='center',
+            valign='middle'
         )
-        slider_layout.add_widget(self.volume_value_label)
         
-        volume_layout.add_widget(slider_layout)
+        # add row
+        volume_row.add_widget(volume_label)
+        volume_row.add_widget(self.volume_slider)
+        volume_row.add_widget(self.volume_value_label)
+
+        # add row in vertical layout
+        volume_layout.add_widget(volume_row)
         settings_layout.add_widget(volume_layout)
-        
-        # Reset Data Section
-        reset_layout = BoxLayout(orientation='vertical', size_hint=(1, 0.3))
-        
-        reset_label = Label(
-            text='[size=18][color=ffcccc]Reset Game Data:[/color][/size]',
-            markup=True,
-            size_hint=(1, 0.4),
-            halign='center'
+
+
+        # Reset Data & Return Section
+        buttons_row = BoxLayout(
+            orientation='vertical',
+            size_hint=(1, None),
+            height=dp(300),
+            spacing=dp(30),
+            padding=(dp(40), dp(10), dp(40), dp(10))
         )
-        reset_layout.add_widget(reset_label)
         
-        reset_btn = Button(
-            text='RESET ALL DATA',
-            size_hint=(1, 0.6),
-            font_size='16sp',
-            background_color=(0.8, 0.2, 0.2, 1)
+        reset_btn = HoverImageButton(
+            source="assets/images/buttons/reset.png",
+            size_hint=(1, None),
+            height=dp(80)
         )
         reset_btn.bind(on_press=self.reset_data)
-        reset_layout.add_widget(reset_btn)
-        
-        settings_layout.add_widget(reset_layout)
         
         main_layout.add_widget(settings_layout)
         
-        # Spacer
-        main_layout.add_widget(Widget(size_hint=(1, 0.1)))
-        
         # Back button
-        back_btn = Button(
-            text='BACK TO MENU',
-            size_hint=(1, 0.15),
-            font_size='20sp',
-            background_color=(0.4, 0.6, 0.8, 1)
+        back_btn = HoverImageButton(
+            source="assets/images/buttons/return.png",
+            size_hint=(1, None),
+            height=dp(100)
         )
         back_btn.bind(on_press=self.go_back)
-        main_layout.add_widget(back_btn)
-        
-        self.add_widget(main_layout)
 
-        # Music background toggle
-        app = App.get_running_app()
-        self.music_toggle = ToggleButton(
-            text='Music: ON' if app.data_manager.get_music_enabled() else 'Music: OFF',
-            state='down' if app.data_manager.get_music_enabled() else 'normal',
-            size_hint=(1, 0.2),
-            height=dp(40)
-        )
-        self.music_toggle.bind(on_press=self.toggle_music_state)
-        settings_layout.add_widget(self.music_toggle)
+        buttons_row.add_widget(reset_btn)
+        buttons_row.add_widget(back_btn)
 
-    
+        settings_layout.add_widget(buttons_row)
+
+    def update_overlay(self, *args):
+        self.overlay_rect.pos = self.pos
+        self.overlay_rect.size = self.size
+
     def toggle_music_state(self, instance):
         """Handle toggle background music"""
         app = App.get_running_app()
@@ -187,16 +218,17 @@ class SettingsScreen(Screen):
             volume = app.data_manager.get_volume()
             self.volume_slider.value = volume
             self.volume_value_label.text = f'{int(volume * 100)}%'
-            self.music_toggle.state = 'down' if app.data_manager.get_music_enabled() else 'normal'
-            self.music_toggle.text = 'Music: ON' if app.data_manager.get_music_enabled() else 'Music: OFF'
+            # self.music_toggle.state = 'down' if app.data_manager.get_music_enabled() else 'normal'
+            # self.music_toggle.text = 'Music: ON' if app.data_manager.get_music_enabled() else 'Music: OFF'
 
-    def on_sound_toggle(self, switch, value):
+    def on_sound_toggle(self, instance):
         """Handle sound toggle"""
         app = App.get_running_app()
         if app and hasattr(app, 'data_manager'):
+            # Toggle sound setting
+            value = instance.state == 'down'
             app.data_manager.set_sound_enabled(value)
-            
-            # Play test sound if enabled
+            # Update sound switch appearance
             if value and hasattr(app, 'sound_manager'):
                 app.sound_manager.play_sound('button_click')
     

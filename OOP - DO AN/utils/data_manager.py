@@ -27,14 +27,11 @@ class DataManager:
         }
         self.load_data()
 
-        # Generate character skins: bo_0 to bo_19, cost 5 to 2000
+        # Generate character skins: bo_0 to bo_3
         self.shop_items = [
-            {'id': f'bo_{i}', 'name': f'Character {i}', 'type': 'skin', 'cost': 5 + i * 15} for i in range(20)
+            {'id': f'bo_{i}', 'name': f'Character {i}', 'type': 'skin', 'cost': (i + 1) * 100} for i in range(4)
         ]
-        # Add backgrounds: background_1 to background_10, cost 20 to 3000
-        self.shop_items += [
-            {'id': f'background_{i+1}', 'name': f'Background {i+1}', 'type': 'background', 'cost': 20 + i * 30} for i in range(10)
-        ]
+        
 
     def get_data_path(self):
         try:
@@ -116,12 +113,12 @@ class DataManager:
     def get_shop_items(self):
         """Return a static list of shop items"""
         items = []
-        # Skins bo_0 to bo_19
-        for i in range(20):
+        # Skins bo_0 to bo_3
+        for i in range(4):
             items.append({
                 "id": f"bo_{i}",
                 "name": f"Bo {i}",
-                "cost": 50 + i * 10,
+                "cost": (i + 1) * 100,
                 "type": "skin"
             })
 

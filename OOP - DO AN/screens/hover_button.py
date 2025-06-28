@@ -1,4 +1,5 @@
-from kivy.uix.button import Button
+from kivy.uix.image import Image
+from kivy.uix.behaviors import ButtonBehavior
 from kivy.properties import BooleanProperty
 from kivy.core.window import Window
 
@@ -20,9 +21,9 @@ class HoverBehavior:
     def on_hover(self, hovered):
         pass
 
-class HoverButton(Button, HoverBehavior):
+class HoverImageButton(ButtonBehavior, Image, HoverBehavior):
     def on_hover(self, hovered):
         if hovered:
-            self.background_color = (1, 1, 0.7, 1)  # Vàng nhạt khi hover
+            self.opacity = 0.8
         else:
-            self.background_color = (1, 1, 1, 1)    # Trắng mặc định
+            self.opacity = 1.0
