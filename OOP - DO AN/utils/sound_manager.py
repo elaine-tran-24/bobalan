@@ -18,11 +18,14 @@ class SoundManager:
         self.sound_files = {
             'fly': 'fly.wav',
             'hit': 'hit.wav',
+            'fvck': 'fvck.wav',#sound sét rẹc 
+            'dit': 'dit.wav', #sound sét rẹc nh mà của việt nam
             'collect': 'collect.wav',
             'game_over': 'game_over.wav',
             'button_click': 'button.wav'
         }
         self.music_tracks = [f'background_{i}.mp3' for i in range(1, 7)]
+        # self.music_tracks = [f'bobalan.mp3']
         self.current_music = None
         self.background_music = None
 
@@ -99,8 +102,10 @@ class SoundManager:
             if app and hasattr(app, 'data_manager'):
                 if not app.data_manager.get_sound_enabled():
                     return
-                
-                volume = app.data_manager.get_volume()
+                if sound_name == 'dit':
+                    volume = 2.0
+                else:
+                    volume = app.data_manager.get_volume()
             else:
                 volume = 0.8
             

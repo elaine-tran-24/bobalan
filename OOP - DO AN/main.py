@@ -128,6 +128,6 @@ class WhenCowsFlyApp(App):
             game_screen = self.screen_manager.get_screen('game')
             if hasattr(game_screen, 'resume_game'):
                 game_screen.resume_game()
-
+print("window.width", Window.width, "window.height", Window.height)
 if __name__ == '__main__':
     WhenCowsFlyApp().run()

@@ -1,29 +1,30 @@
 """
-Game Screen for When Cows Fly - FIXED VERSION
+Game Screen for When Cows Fly
 Main gameplay screen with cow, obstacles, and game logic
 """
-
+GRAVITY = 600
+JUMP_STRENGTH = 400
+GROUND_LEVEL = 100
+OBSTACLE_SPEED = 300
 import random
 import os
 from kivy.uix.screenmanager import Screen
 from kivy.uix.widget import Widget
 from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
+from kivy.graphics import Color, Rectangle, Ellipse, Line
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.app import App
 from kivy.vector import Vector
 from kivy.metrics import dp
+
 from kivy.uix.image import Image
+from kivy.graphics import InstructionGroup, Color, Ellipse
 from kivy.uix.widget import Widget
 from screens.background import ParallaxWidget
 from kivy.uix.behaviors import ButtonBehavior
 
-
-GRAVITY = 600
-JUMP_STRENGTH = 400
-GROUND_LEVEL = dp(100)
-OBSTACLE_SPEED = 300
 class ImageButton(ButtonBehavior, Image):
     pass
 
@@ -34,28 +35,21 @@ class Cow(Widget):
         self.gravity = GRAVITY
         self.jump_strength = JUMP_STRENGTH
         self.size_hint = (None, None)
-        self.size = (dp(250), dp(171))
+        self.size = (250, 171)
         self.ground_level = GROUND_LEVEL
         self.is_falling = False
         self.fall_reason = None
         self.game_started = False
-        
-        # Store original spawn position for proper reset
-        self.original_x = Window.width * 0.5 - self.size[0] * 0.5
-        self.original_y = self.ground_level
-        
-        # Hole-specific tracking
-        self.hole_fall_start_x = None  # Track where hole fall started
-        self.in_hole_phase = False     # Track if we're in hole falling phase
         
         # Flashing effect properties
         self.is_flashing = False
         self.flash_timer = 0
         self.flash_duration = 1.0
         self.flash_interval = 0.1
-        
-        self.pos = (self.original_x, self.original_y)
+        cow_x = Window.width * 0.5 - self.size[0] * 0.5
+        self.pos = (cow_x, self.ground_level)
         self.skin_path = skin_path or "assets/images/characters/bo.gif"
+        # self.trail_background = trail_background
 
         # Display cow image
         self.image = Image(source=self.skin_path, size=self.size, pos=self.pos)
@@ -81,30 +75,19 @@ class Cow(Widget):
                 self.flash_timer = 0
                 self.image.opacity = 1.0
 
-        # Apply gravity
         self.velocity_y -= self.gravity * dt
         self.y += self.velocity_y * dt
 
-        # FIXED: Improved hole falling logic with immediate reset
-        if self.is_falling and self.fall_reason == 'hole':
-            # If we just started falling into hole, record the start position
-            if self.hole_fall_start_x is None:
-                self.hole_fall_start_x = self.x
-                self.in_hole_phase = True
-            
-            # Only move horizontally if still visible and in hole phase
-            if self.in_hole_phase and self.top >= 0:
+        if self.is_falling and self.fall_reason == 'hole' and self.parent.is_cow_in_hole(self):
+            if self.top >= 0:
                 self.x -= 200 * dt
-            
-            # Check if cow has fallen completely off screen - IMMEDIATE RESET
-            elif self.top < 0 and self.in_hole_phase:
-                self.in_hole_phase = False
-                # FIXED: Direct call instead of Clock.schedule_once to reduce lag
+            if self.top < 0 and self.parent.is_cow_pass_hole(self):
                 if self.parent:
                     self.parent.lose_life()
                 return
+            else:
+                return
         else:
-            # Normal ground collision
             if self.y <= self.ground_level:
                 self.y = self.ground_level
                 self.velocity_y = 0
@@ -119,14 +102,12 @@ class Cow(Widget):
     def start_falling(self, reason='hit'):
         self.is_falling = True
         self.fall_reason = reason
-        
         if reason == 'hole':
             self.velocity_y = -300
-            # Reset hole tracking variables
-            self.hole_fall_start_x = None
-            self.in_hole_phase = False
+
         
         if reason != 'hole':
+
             self.start_flashing()
 
     def start_flashing(self):
@@ -134,19 +115,13 @@ class Cow(Widget):
         self.flash_timer = 0
 
     def reset_to_ground(self):
-        # FIXED: Always reset to original spawn position
-        self.pos = (self.original_x, self.original_y)
+        self.pos = (Window.width * 0.5 - self.width * 0.5, self.ground_level)
         self.velocity_y = 0
         self.is_falling = False
         self.fall_reason = None
         self.is_flashing = False
         self.flash_timer = 0
         self.image.opacity = 1.0
-        
-        # Reset hole-specific tracking
-        self.hole_fall_start_x = None
-        self.in_hole_phase = False
-        
         self.update_graphics()
 
      
@@ -166,20 +141,20 @@ class Obstacle(Widget):
 
         # Set size and position based on obstacle type
         if self.obstacle_type == 'electric_wire':
-            self.size = (Window.width, Window.width * 0.033)
+            self.size = (Window.width, Window.width * 0.033)  # A small, dangerous segment
             self.path = "assets/images/obstacles/wire.png"
             self.pos = (0, Window.height-50)
 
         elif self.obstacle_type == 'hole':
-            self.size = (dp(275), dp(GROUND_LEVEL))
+            self.size = (275, GROUND_LEVEL+50)
             self.path = "assets/images/obstacles/hole.png"
             self.pos = (Window.width, 0)
         elif self.obstacle_type == 'barrier':
-            self.size = (dp(200), dp(230))
+            self.size = (200, 230)
             self.pos = (Window.width, GROUND_LEVEL)
             self.path = "assets/images/obstacles/barrier.png"
         elif self.obstacle_type == 'kite':
-            self.size = (dp(120),dp(150))
+            self.size = (120,150)
             start_x = Window.width*random.uniform(0.4, 0.7)
             start_y = Window.height - random.randint(50, 100)
             self.path = "assets/images/obstacles/kite.gif"
@@ -193,23 +168,22 @@ class Obstacle(Widget):
             self.horizontal_drift = random.uniform(50, 100)
 
         elif self.obstacle_type == 'bird':
-            self.size = (dp(70), dp(93))
+            self.size = (70, 93)
             self.pos = (Window.width, random.randint(GROUND_LEVEL + 40, Window.height - 80))
             self.speed = 1200
             self.path = "assets/images/obstacles/bird.png"
 
         self.initial_y = self.y
         self.rotation_angle = 0
-        
-        # FIXED: Create image once and store reference
-        self.image = Image(source=self.path, size=self.size, pos=self.pos)
-        self.add_widget(self.image)
+            
+        # self.setup_obstacle()
+        self.add_widget(Image(source=self.path, size=self.size, pos=self.pos))
         self.bind(pos=self.update_graphics)
-        
     def update_graphics(self, *args):
-        # FIXED: Don't recreate images constantly - just update existing image position
-        if hasattr(self, 'image'):
-            self.image.pos = self.pos
+        self.canvas.clear()
+        # self.setup_obstacle()
+        self.add_widget(Image(source=self.path, size=self.size, pos=self.pos))
+
 
     def update(self, dt, speed_multiplier=1.0):
         if self.obstacle_type == 'electric_wire':
@@ -238,10 +212,11 @@ class Collectible(Widget):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.speed = 200
-        self.size = (dp(60), dp(60))
+        self.size = (40, 40)
         self.pos = (Window.width, random.randint(80, Window.height - 80))
         self.size_hint = (None, None)
 
+        # Tạo hình ảnh đại diện cho collectible
         self.image = Image(
             source="assets/images/obstacles/collectible.png",
             size=self.size,
@@ -249,15 +224,15 @@ class Collectible(Widget):
             pos=self.pos
         )
         self.add_widget(self.image)
+
+        # Cập nhật vị trí khi `self.pos` thay đổi
         self.bind(pos=self.update_graphics)
 
     def update_graphics(self, *args):
         self.image.pos = self.pos
-        
     def update(self, dt, speed_multiplier=1.0):
         self.x -= self.speed * speed_multiplier * dt
         return self.x < -self.width
-
 class GameScreen(Screen):
     """Main game screen"""
     
@@ -279,6 +254,7 @@ class GameScreen(Screen):
         self.build_ui()
         self.is_paused = False
 
+
     def build_ui(self):
         """Build the game UI"""
 
@@ -286,6 +262,8 @@ class GameScreen(Screen):
         self.parallax = ParallaxWidget(cow=self.cow)
         
         # UI Layout
+
+        
         ui_layout = BoxLayout(
             orientation='horizontal',
             size_hint=(1, 0.1),
@@ -293,44 +271,48 @@ class GameScreen(Screen):
             padding=[dp(20), dp(10)],
             spacing=dp(10)
         )
-        
         # Score display
+# Score display
         self.score_label = Label(
             text='Score: 0',
             font_size='20sp',
             size_hint=(0.7, 1),
             halign='left',
-            valign='middle',
-            color=(1, 1, 1, 1)
+            valign='middle',         # ✅ canh giữa theo chiều dọc
+            color=(1, 1, 1, 1)        # ✅ nếu nền sáng thì dùng màu trắng
         )
         self.score_label.bind(size=self._update_label_text_align)
 
-        # Lives UI
+                # Lives UI
         self.hearts = []
         self.hearts_layout = BoxLayout(
             orientation='horizontal',
             size_hint=(None, None),
             size=(dp(120), dp(40)),
             spacing=dp(5),
-            pos_hint={'x': 0.01, 'top': 0.95}
+            pos_hint={'x': 0.01, 'top': 0.95}  # ← đẩy xuống nhẹ
         )
 
+
         for _ in range(3):
-            heart = Image(source='assets/images/icons/live.png', size_hint=(None, None), size=(dp(40), dp(40)))
+            heart = Image(source='assets/images/icons/live.png', size_hint=(None, None), size=(40, 40))
             self.hearts.append(heart)
             self.hearts_layout.add_widget(heart)
 
+
         ui_layout.add_widget(self.score_label)
         ui_layout.add_widget(self.hearts_layout)
+
+        # self.add_widget(self.hearts_layout)
         self.add_widget(ui_layout)
         
-        # Settings icon
+    # Settings icon
         self.game_settings_btn = ImageButton(
             source='assets/images/buttons/setting.png',
             size_hint=(None, None),
-            size=(dp(80), dp(80)),
+            size=(80, 80),
             pos_hint={'right': 0.98, 'y': 0.02}
-        )
+    )
         self.game_settings_btn.bind(on_press=self.show_settings)
         self.add_widget(self.game_settings_btn, index=0) 
 
@@ -362,25 +344,33 @@ class GameScreen(Screen):
         self.spawn_timer = 0
         self.collectible_spawn_timer = 0
 
-        # Get skin and background
+        # Lấy skin và background
         app = App.get_running_app()
-        skin_id = app.data_manager.get_equipped_skin()
+        skin_id = app.data_manager.get_equipped_skin()   # <-- đổi tên đúng
         print("Equipped skin_id:", skin_id)
-        # skin_path = f"assets/images/characters/bo_2.gif"
+
+        # background_id = app.data_manager.get_equipped_background()  # <-- đổi tên đúng
+
         skin_path = f"assets/images/characters/{skin_id}.gif" if skin_id else "assets/images/characters/bo.gif"
         print("Skin path:", skin_path, "| Exists:", os.path.exists(skin_path))
         
-        # Create new Cow with skin
+        # bg_path = f"assets/images/backgrounds/{background_id}.png" if background_id else "assets/images/backgrounds/background_menu.png"
+
+        # Tạo mới Cow với skin/background
         if hasattr(self, 'cow'):
             self.remove_widget(self.cow)
 
         self.cow = Cow(skin_path=skin_path)
-        self.cow.pos = (dp(100), GROUND_LEVEL)
+        self.cow.pos = (100, GROUND_LEVEL)
         self.cow.game_started = False
         self.add_widget(self.cow)
         print("Added cow with skin:", self.cow.skin_path)
 
-        # Clear old obstacles and collectibles
+        # if bg_path and os.path.exists(bg_path):
+        #     self.bg_rect.source = bg_path
+
+
+        # Xoá vật cản và cỏ cũ
         for obstacle in self.obstacles:
             self.remove_widget(obstacle)
         for collectible in self.collectibles:
@@ -388,13 +378,14 @@ class GameScreen(Screen):
         self.obstacles.clear()
         self.collectibles.clear()
 
-        self.spawn_obstacle('electric_wire')
+        self.spawn_obstacle('electric_wire')  # Khởi đầu với một vật cản
 
         # UI
         self.update_ui()
 
         # Game loop
         Clock.schedule_interval(self.update_game, 1.0 / 60.0)
+
 
     def stop_game(self):
         """Stop the game"""
@@ -406,6 +397,7 @@ class GameScreen(Screen):
             Clock.unschedule(self.update_game)
             self.game_running = False
             self.is_paused = True
+
             
     def resume_game(self):
         if not self.game_running and self.is_paused:
@@ -458,13 +450,17 @@ class GameScreen(Screen):
     
     def spawn_obstacle(self, obstacle_type=None):
         """Spawn a random obstacle"""
+        # CHANGED: Added 'electric_wire' to the main list
         if obstacle_type is None:
-            obstacle_types = ['hole','kite', 'bird', 'barrier', 'electric_wire']
+            obstacle_types = ['hole','hole','hole','hole','hole']
+            # obstacle_types = ['hole', 'kite', 'barrier', 'bird', 'electric_wire']
+
             obstacle_type = random.choice(obstacle_types)
         
-        obstacle = Obstacle(obstacle_type=obstacle_type)
+        obstacle = Obstacle(obstacle_type=obstacle_type) # Pass type as keyword arg
         
         self.obstacles.append(obstacle)
+        # FIXED: Removed the extra spawn and now add the single created obstacle
         try:
             cow_index = self.children.index(self.cow)
             if obstacle.obstacle_type == 'hole':
@@ -473,7 +469,6 @@ class GameScreen(Screen):
                 self.add_widget(obstacle, index=cow_index)
         except ValueError:
             self.add_widget(obstacle)    
-            
     def spawn_collectible(self):
         """Spawn a collectible grass"""
         collectible = Collectible()
@@ -483,7 +478,6 @@ class GameScreen(Screen):
             self.add_widget(collectible, index=cow_index + 1)
         except ValueError:
             self.add_widget(collectible)    
-            
     def check_collision(self, obstacle):
         """Check collision between cow and obstacle"""
         if self.cow.collide_widget(obstacle):
@@ -492,8 +486,9 @@ class GameScreen(Screen):
             app = App.get_running_app()
             
             if obstacle.obstacle_type == 'electric_wire':
-                # FIXED: Use non-blocking sound call
-                self.play_sound_async('game_over')
+                # Instant game over for electric wire
+                if app and hasattr(app, 'sound_manager'):
+                    app.sound_manager.play_sound('game_over')
                 self.game_over()
                 return
             
@@ -502,9 +497,10 @@ class GameScreen(Screen):
                 pass
             
             else:
-                # FIXED: Use non-blocking sound call
-                self.play_sound_async('hit')
-                # self.play_sound_async('dit')                
+                # Other obstacles cause cow to fall and lose life
+                if app and hasattr(app, 'sound_manager'):
+                    app.sound_manager.play_sound('hit')
+                
                 # Make cow fall
                 self.cow.start_falling('hit')
                 
@@ -535,33 +531,36 @@ class GameScreen(Screen):
                 hole_right = obstacle.right
                 cow_center = cow.center_x
                 
+                # Check if cow is over the hole
+                # if hole_left <= cow_center <= hole_right:
                 if cow_center >= (hole_left + hole_right) / 2:
                     return True
         return False
     
-    # REMOVED: No longer needed - using immediate reset instead
+    def is_cow_pass_hole(self, cow):
+        """Check if cow is positioned over a hole"""
+        for obstacle in self.obstacles:
+            if obstacle.obstacle_type == 'hole':
+                hole_left = obstacle.x
+                hole_right = obstacle.right
+                
+                # Check if cow is over the hole
+                # if hole_left <= cow_center <= hole_right:
+                if hole_right <= 100 * 0.8:
+                    return True
+        return False
 
     def check_collectible_collision(self, collectible):
         """Check collision between cow and collectible"""
         if self.cow.collide_widget(collectible):
-            # FIXED: Use non-blocking sound call
-            # self.play_sound_async('collect')
+            app = App.get_running_app()
+            if app and hasattr(app, 'sound_manager'):
+                app.sound_manager.play_sound('collect')
             
             self.score += 1
             self.update_ui()
             self.remove_widget(collectible)
             self.collectibles.remove(collectible)
-    
-    # FIXED: Much more efficient sound playing - no Clock scheduling
-    def play_sound_async(self, sound_name):
-        """Play sound without blocking the game"""
-        try:
-            app = App.get_running_app()
-            if app and hasattr(app, 'sound_manager'):
-                app.sound_manager.play_sound(sound_name)
-        except Exception:
-            # Silently ignore sound errors to prevent game crashes
-            pass
     
     def game_over(self):
         """Handle game over"""
@@ -581,7 +580,7 @@ class GameScreen(Screen):
         self.manager.current = 'game_over'
     
     def update_ui(self):
-        # Update lives display
+    # Update lives display
         for i in range(3):
             if i < self.lives:
                 self.hearts[i].source = 'assets/images/icons/live.png'
@@ -594,12 +593,14 @@ class GameScreen(Screen):
     def on_touch_down(self, touch):
         """Handle touch input"""
         if super().on_touch_down(touch):
-            return True
+            return True  # Nếu widget con đã xử lý touch, dừng lại
 
+        # Nếu không phải touch vào widget con, xử lý logic game như cũ
         if self.game_running:
             self.cow.jump()
-            # FIXED: Use non-blocking sound call
-            # self.play_sound_async('fly')
+            app = App.get_running_app()
+            if app and hasattr(app, 'sound_manager'):
+                app.sound_manager.play_sound('fly')
             return True  
 
         return False
@@ -608,9 +609,12 @@ class GameScreen(Screen):
         """Handle space bar press"""
         if self.game_running:
             self.cow.jump()
-            # FIXED: Use non-blocking sound call
-            # self.play_sound_async('fly')
+            app = App.get_running_app()
+            if app and hasattr(app, 'sound_manager'):
+                app.sound_manager.play_sound('fly')
 
     def show_settings(self, *args):
         self.pause_game()
         self.manager.current = 'game_settings'
+import os
+# print("Files in characters folder:", os.listdir("assets/images/characters"))
