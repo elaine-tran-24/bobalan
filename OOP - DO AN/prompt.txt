@@ -1,0 +1,37 @@
+i can't load gif in apk file, so i have to convert gif file of cow's skins, kite obstacles to 4 frames. each frame should appear for 20 ms.
+
+assets/
+├── images/
+│   ├── characters/
+│   │   ├── bo/
+│   │   │   └── 0.png
+│   │   │   └── 1.png
+│   │   │   └── 2.png
+│   │   │   └── 3.png
+│   │   ├── bo_0/
+│   │   │   └── 0.png
+│   │   │   └── 1.png
+│   │   │   └── 2.png
+│   │   │   └── 3.png
+│   │   ├── bo_1
+│   │   │   └── 0.png
+│   │   │   └── 1.png
+│   │   │   └── 2.png
+│   │   │   └── 3.png
+│   │   ├── bo_2/
+│   │   │   └── 0.png
+│   │   │   └── 1.png
+│   │   │   └── 2.png
+│   │   │   └── 3.png
+│   │   └── bo_3/
+│   │       └── 0.png
+│   │       └── 1.png
+│   │       └── 2.png
+│   │       └── 3.png
+│   └── obstacles/
+│       └── kite/
+│           ├── 0.png
+│           ├── 1.png
+│           ├── 2.png
+│           └── 3.png
+ 
